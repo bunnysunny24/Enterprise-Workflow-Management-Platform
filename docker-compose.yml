@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: workflow-mysql
+    restart: always
+    environment:
+      MYSQL_DATABASE: enterprise_workflow_db
+      MYSQL_ROOT_PASSWORD: Bunny
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 10s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: workflow-backend
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/enterprise_workflow_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true
+      DB_USERNAME: root
+      DB_PASSWORD: Bunny
+    ports:
+      - "8080:8080"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: workflow-frontend
+    restart: always
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"
+
+volumes:
+  mysql_data:
